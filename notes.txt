@@ -1,0 +1,10 @@
+;;; Structure and Interpretation of Computer Programs
+;;; Using Unofficial Texinfo format 2.andresraba3
+
+p. 63 Recursive process vs. procedure
+
+"In contrasting iteration and recursion, we must be careful not to confuse the notion of a recursive _process_ with the notion of a recursive _procedure_.
+
+When we describe a procedure as recursive, we are referring to the syntactic fact that the procedure definition refers to the procedure itself.
+
+But when we describe a process as following a pattern that is, say, linearly recursive, we are speaking about how the process evolves, not about the syntax of how a procedure is written."
