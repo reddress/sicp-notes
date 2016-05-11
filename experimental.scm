@@ -22,3 +22,37 @@
   (inf-sqrt-iter up-to 2))
 
 ;;; Answer: 3
+
+;;; ref. p. 103
+
+(define (repeatedly-call f x n)
+  (if (<= n 1)
+      (f x)
+      (f (repeatedly-call f x (- n 1)))))
+
+;;; p. 143 Ex. 2.18
+
+(define (hc-reverse lst)
+  (define (hc-reverse-iter lst result)
+    (if (null? lst)
+        result
+        (hc-reverse-iter (cdr lst) (cons (car lst) result))))
+  (hc-reverse-iter lst '()))
+
+(define (hc-upcase-first-char word)
+  (let ((chars (string->list word)))
+    (list->string (cons (char-upcase (car chars)) (cdr chars)))))
+
+;;; R5RS Iteration
+
+;; countdown
+(do ((i 5 (- i 1)))
+    ((= i 0) 'Blast-off!)
+  (display i)
+  (newline))
+
+(let loop ((i 5))
+  (cond ((= i 0) 'Blast-off!)
+        (else (display i)
+              (newline)
+              (loop (- i 1)))))

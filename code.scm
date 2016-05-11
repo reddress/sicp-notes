@@ -1,21 +1,23 @@
 ;;; Structure and Interpretation of Computer Programs
 ;;; Using Unofficial Texinfo format 2.andresraba3
 
+;;; BUILDING ABSTRACTIONS WITH PROCEDURES
+
 ;;; p. 33 Giving names to identify variables and assign them values
 
 (define pi 3.14159)
 (define radius 10)
 
-(* pi (* radius radius))
-;; 314.159
+;; (* pi (* radius radius))
+;;;; 314.159
 
 ;;; p. 37 Procedure definitions
 
 (define (square x)
   (* x x))
 
-(square (+ 2 5))
-;; 49
+;; (square (+ 2 5))
+;;;; 49
 
 ;;; p. 43 Case analysis with conditionals
 
@@ -161,3 +163,478 @@
   (cond ((= times 0) #t)
         ((fermat-test n) (fast-prime? n (- times 1)))
         (else #f)))
+
+;;; p. 90 Summation template
+
+;; (define (<name> a b)
+;;   (if (> a b)
+;;       0
+;;       (+ (<term> a)
+;;          (<name> (<next> a) b))))
+
+;;; p. 91 Concept of summation
+
+(define (sum term a next b)
+  (if (> a b)
+      0
+      (+ (term a)
+         (sum term (next a) next b))))
+
+(define (inc n) (+ n 1))
+(define (cube x) (* x x x))
+(define (sum-cubes a b)
+  (sum cube a inc b))
+
+(define (identity x) x)
+(define (sum-integers a b)
+  (sum identity a inc b))
+
+;;; p. 92 Numerical integration
+
+(define (integral f a b)
+  (let ((dx 0.2))   ;; stack overflow if dx = 0.001 or large a-b range
+    (define (add-dx x)
+      (+ x dx))
+    (* (sum f (+ a (/ dx 2.0)) add-dx b)
+       dx)))
+
+;;; p. 95 Constructing procedures using lambda
+
+;;; A way of directly specifying "the procedure that returns its input incremented by 4
+
+;; (lambda (x) (+ x 4))
+
+;; is the same procedure as
+(define plus4 (lambda (x) (+ x 4)))
+  
+(define (integral-with-lambda f a b dx)
+  (* (sum f
+          (+ a (/ dx 2.0))
+          (lambda (x) (+ x dx))
+          b)
+     dx))
+
+;;; p. 98 Let
+
+;;; The general form of a let expression is
+;; (let ((var-1 exp-1)
+;;       (var-2 exp-2)
+;;       ...
+;;       (var-n exp-n))
+;;   body)
+
+;;; let is equivalent to a lambda
+
+(define (f x y)
+  (let ((a (+ 1 (* x y)))
+        (b (- 1 y)))
+    (+ (* x (square a))
+       (* y b)
+       (* a b))))
+
+;;; is the same as
+(define (f x y)
+  ((lambda (a b)
+     (+ (* x (square a))
+        (* y b)
+        (* a b)))
+   (+ 1 (* x y))
+   (- 1 y)))
+
+;;; p. 101 Finding roots of equations
+
+(define (search f neg-point pos-point)
+  (define (close-enough? x y) (< (abs (- x y)) 0.001))
+  (define (average x y) (/ (+ x y) 2))
+  (let ((midpoint (average neg-point pos-point)))
+    (if (close-enough? neg-point pos-point)
+        midpoint
+        (let ((test-value (f midpoint)))
+          (cond ((positive? test-value)
+                 (search f neg-point midpoint))
+                ((negative? test-value)
+                 (search f midpoint pos-point))
+                (else midpoint))))))
+
+(define (half-interval-method f a b)
+  (let ((a-value (f a))
+        (b-value (f b)))
+    (cond ((and (negative? a-value) (positive? b-value))
+           (search f a b))
+          ((and (negative? b-value) (positive? a-value))
+           (search f b a))
+          (else (error "Given values are not of opposite sign" a b)))))
+
+;;; p. 103 Fixed points of functions
+
+(define (fixed-point f first-guess)
+  (let ((tolerance 0.00001))
+    (define (close-enough? v1 v2)
+      (< (abs (- v1 v2))
+         tolerance))
+    (define (try guess)
+      (let ((next (f guess)))
+        (if (close-enough? guess next)
+            next
+            (try next))))
+    (try first-guess)))
+
+;; does not converge
+;; (define (sqrt-fixed-point x)
+;;   (fixed-point (lambda (y) (/ x y)) 1.0))
+
+;;; p. 104 Average damping
+
+(define (average x y) (/ (+ x y) 2))
+(define (sqrt-average-damping x)
+  (fixed-point (lambda (y) (average y (/ x y))) 1.0))
+
+;;; p. 107 Procedures as returned values
+
+(define (average-damp f)
+  (lambda (x) (average x (f x))))
+
+;;; p. 109 Numerical derivative
+
+(define (deriv g)
+  (let ((dx 0.001))
+    (lambda (x)
+      (/ (- (g (+ x dx))
+            (g x))
+         dx))))
+
+;;; p. 109 Newton's method
+
+(define (newton-transform g)
+  (lambda (x) (- x (/ (g x) ((deriv g) x)))))
+(define (newtons-method g guess)
+  (fixed-point (newton-transform g) guess))
+
+(define (sqrt-newtons-method x)
+  (newtons-method
+   (lambda (y) (- (square y) x)) 1.0))
+
+;;; p. 110 Fixed point of transform
+
+(define (fixed-point-of-transform g transform guess)
+  (fixed-point (transform g) guess))
+
+;;; BUILDING ABSTRACTIONS WITH DATA
+
+;;; p. 117 Data abstraction
+
+;; (define (linear-combination a b x y)
+;;   (add (mul a x) (mul b y)))
+
+;;; p. 121 Rational numbers
+
+;;; make-rat, numer, and denom defined below
+(define (add-rat x y)
+  (make-rat (+ (* (numer x) (denom y))
+               (* (numer y) (denom x)))
+            (* (denom x) (denom y))))
+
+(define (sub-rat x y)
+  (make-rat (- (* (numer x) (denom y))
+               (* (numer y) (denom x)))
+            (* (denom x) (denom y))))
+
+(define (mul-rat x y)
+  (make-rat (* (numer x) (numer y))
+            (* (denom x) (denom y))))
+
+(define (div-rat x y)
+  (make-rat (* (numer x) (denom y))
+            (* (denom x) (numer y))))
+
+(define (equal-rat? x y)
+  (= (* (numer x) (denom y))
+     (* (numer y) (denom x))))
+
+;;; p. 122 Pairs
+;;; defined with cons, whose parts can be extracted with car and cdr
+
+(define (make-rat n d)
+  (let ((g (gcd n d)))
+    (cons (/ n g) (/ d g))))
+(define (numer x) (car x))
+(define (denom x) (cdr x))
+
+(define (print-rat x)
+  (display (numer x))
+  (display "/")
+  (display (denom x))
+  (newline))
+
+;;; p. 130 Data structure as procedures
+
+(define (cons-proc x y)
+  (define (dispatch m)
+    (cond ((= m 0) x)
+          ((= m 1) y)
+          (else (error "Argument must be 0 or 1: cons-proc" m))))
+  dispatch)  ;; the return value is this procedure
+
+(define (car-proc z) (z 0))
+(define (cdr-proc z) (z 1))
+
+;;; p. 139 Representing a sequence of pairs as a list
+
+;; (list <a-1> <a-2> ... <a-n>)
+
+;; is equivalent to
+;; (cons <a-1>
+;;       (cons <a-2>
+;;             (cons ...
+;;                   (cons <a-n>
+;;                         '() ... ))))  ;; '() is given as nil
+
+;;; p. 141 List operations
+
+(define (list-ref-sicp items n)
+  (if (= n 0)
+      (car items)
+      (list-ref-sicp (cdr items) (- n 1))))
+
+(define (length-sicp items)
+  (if (null? items)
+      0
+      (+ 1 (length-sicp (cdr items)))))
+
+(define (append-sicp list1 list2)
+  (if (null? list1)
+      list2
+      (cons (car list1) (append-sicp (cdr list1) list2))))
+
+;;; p. 146 Mapping over lists
+
+(define (map-sicp proc items)
+  (if (null? items)
+      '()
+      (cons (proc (car items))
+            (map-sicp proc (cdr items)))))
+
+;;; p. 151 Recursive procedures on trees
+
+(define (count-leaves x)
+  (cond ((null? x) 0)
+        ((not (pair? x)) 1)
+        (else (+ (count-leaves (car x))
+                 (count-leaves (cdr x))))))
+
+;;; p. 154 Mapping over trees
+
+(define (scale-tree tree factor)
+  (cond ((null? tree) '())
+        ((not (pair? tree)) (* tree factor))
+        (else (cons (scale-tree (car tree) factor)
+                    (scale-tree (cdr tree) factor)))))
+
+;;; p. 158 Filtering a sequence is selecting only those elements that satisfy a given predicate
+
+(define (filter-sicp predicate sequence)
+  (cond ((null? sequence) '())
+        ((predicate (car sequence))
+         (cons (car sequence)
+               (filter-sicp predicate (cdr sequence))))
+        (else (filter-sicp predicate (cdr sequence)))))
+
+;;; p. 158 Accumulation
+
+(define (accumulate-sicp op initial sequence)
+  (if (null? sequence)
+      initial
+      (op (car sequence)
+          (accumulate-sicp op initial (cdr sequence)))))
+
+(define (enumerate-interval low high)
+  (if (> low high)
+      '()
+      (cons low (enumerate-interval (+ low 1) high))))
+
+(define (enumerate-tree tree)
+  (cond ((null? tree) '())
+        ((not (pair? tree)) (list tree))
+        (else (append (enumerate-tree (car tree))
+                      (enumerate-tree (cdr tree))))))
+
+;;; p. 155 Sequences as conventional interfaces
+
+(define (sum-odd-squares tree)
+  (cond ((null? tree) 0)
+        ((not (pair? tree))
+         (if (odd? tree) (square tree) 0))
+        (else (+ (sum-odd-squares (car tree))
+                 (sum-odd-squares (cdr tree))))))
+
+;; is equivalent to the signal-flow of (p. 159)
+
+(define (sum-odd-squares-signal-flow tree)
+  (accumulate-sicp
+   + 0 (map-sicp square (filter-sicp odd? (enumerate-tree tree)))))
+
+;;; another example (p. 155)
+
+(define (even-fibs n)
+  (define (next k)
+    (if (> k n)
+        '()
+        (let ((f (fib k)))
+          (if (even? f)
+              (cons f (next (+ k 1)))
+              (next (+ k 1))))))
+  (next 0))
+
+;; is equivalent to the signal-flow of (p. 159)
+
+(define (even-fibs-signal-flow n)
+  (accumulate-sicp
+   cons
+   '()
+   (filter-sicp even? (map-sicp fib (enumerate-interval 0 n)))))
+
+;;; p. 160 Data processing, assume we have a 'salary' selector for a programmer
+
+;; (define (salary-of-highest-paid-programmer records)
+;;   (accumulate
+;;    max 0 (map salary (filter programmer? records))))
+
+;;; p. 166 Nested mappings
+
+(define (nested-mapping-example)
+  (let ((n 3))
+    (accumulate-sicp
+     append '() (map-sicp (lambda (i)
+                            (map-sicp (lambda (j) (list i j))
+                                      (enumerate-interval 1 (- i 1))))
+                          (enumerate-interval 1 n)))))
+
+(define (flatmap proc seq)
+  (accumulate-sicp append '() (map-sicp proc seq)))
+
+(define (prime-sum? pair)
+  (prime? (+ (car pair) (cadr pair))))
+
+(define (make-pair-sum pair)
+  (list (car pair) (cadr pair) (+ (car pair) (cadr pair))))
+
+(define (prime-sum-pairs n)
+  (map make-pair-sum
+       (filter prime-sum?
+               (flatmap
+                (lambda (i)
+                  (map (lambda (j) (list i j))
+                       (enumerate-interval 1 (- i 1))))
+                (enumerate-interval 1 n)))))
+
+;;; p.167 Permutations (depends on flatmap and remove)
+
+(define (remove item sequence)
+  (filter (lambda (x) (not (equal? x item)))
+          sequence))
+
+(define (permutations s)
+  (if (null? s)
+      (list '())
+      (flatmap (lambda (x)
+                 (map (lambda (p) (cons x p))
+                      (permutations (remove x s))))
+               s)))
+
+;;; p. 189 Quotation distinguishes between symbols and their values
+
+;; (define a 1)
+;; (define b 2)
+;; (list a b)
+;;;; (1 2)
+;; (list 'a 'b)
+;;;; (a b)
+;; (list 'a b)
+;;;; (a 2)
+
+;; '() is the empty list, nil is no longer used from this point forward
+
+;;; p. 190 Check if a symbol is contained in a list
+
+(define (memq-sicp item x)
+  (cond ((null? x) false)
+        ((eq? item (car x)) x)
+        (else (memq-sicp item (cdr x)))))
+
+;;; p. 223 Multiple representations for abstract data: complex numbers
+
+;;; Assume four selectors:
+;;; real-part, imag-part, magnitude, and angle
+
+;;; constructors 
+;;; (make-from-real-imag (real-part z) (imag-part z))
+;;; (make-from-mag-ang (magnitude z) (angle z))
+
+(define (add-complex z1 z2)
+  (make-from-real-imag (+ (real-part z1) (real-part z2))
+                       (+ (imag-part z1) (imag-part z2))))
+
+(define (sub-complex z1 z2)
+  (make-from-real-imag (- (real-part z1) (real-part z2))
+                       (- (imag-part z1) (imag-part z2))))
+
+(define (mul-complex z1 z2)
+  (make-from-mag-ang (* (magnitude z1) (magnitude z2))
+                     (+ (angle z1) (angle z2))))
+
+(define (div-complex z1 z2)
+  (make-from-mag-ang (/ (magnitude z1) (magnitude z2))
+                     (- (angle z1) (angle z2))))
+
+;;; p. 224
+;;; Ben Bitdiddle chooses rectangular form
+;;; Alyssa P. Hacker chooses polar form
+
+;;; p. 226 Tagged data
+
+(define (attach-tag type-tag contents)
+  (cons type-tag contents))
+(define (type-tag datum)
+  (if (pair? datum)
+      (car datum)
+      (error "Bad tagged data: type-tag" datum)))
+(define (contents datum)
+  (if (pair? datum)
+      (cdr datum)
+      (error "Bad tagged data: contents" datum)))
+
+(define (rectangular? z) (eq? (type-tag z) 'rectangular))
+(define (polar? z) (eq? (type-tag z) 'polar))
+
+;;; p. 227 Rectangular form
+(define (real-part-rectangular z) (car z))
+(define (imag-part-rectangular z) (cdr z))
+
+(define (magnitude-rectangular z)
+  (sqrt (+ (square (real-part-rectangular z))
+           (square (imag-part-rectangular z)))))
+
+(define (angle-rectangular z)
+  (atan (imag-part-rectangular z) (real-part-rectangular z)))
+
+(define (make-from-real-imag-rectangular x y)
+  (attach-tag 'rectangular (cons x y)))
+
+(define (make-from-mag-ang-rectangular r a)
+  (attach-tag 'rectangular
+              (cons (* r (cos a)) (* r (sin a)))))
+
+;;; p. 227 Polar form
+(define (real-part-polar z) (* (magnitude-polar z) (cos (angle-polar z))))
+(define (imag-part-polar z) (* (magnitude-polar z) (sin (angle-polar z))))
+(define (magnitude-polar z) (car z))
+(define (angle-polar z) (cdr z))
+(define (make-from-real-imag-polar x y)
+  (attach-tag 'polar
+              (cons (sqrt (+ (square x) (square y)))
+                    (atan y x))))
+(define (make-from-mag-ang r a)
+  (attach-tag 'polar
+              (cons r a)))
+
+;;; p. 228 Generic selectors

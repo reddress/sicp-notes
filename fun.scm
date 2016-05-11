@@ -1,5 +1,24 @@
 ;;; silly code
 
+(define (fizzbuzz-sequence n)
+  (define (is-special n div word)
+    (if (= (remainder n div) 0)
+        word
+        ""))
+  (define (is-fizzbuzz n)
+    (let ((special-str
+           (string-append (is-special n 3 "fizz")
+                          (is-special n 5 "buzz"))))
+      (if (string= special-str "")
+          n
+          special-str)))
+  (define (fizzbuzz-iter i limit)
+    (if (<= i limit)
+        (begin (display (is-fizzbuzz i))
+               (newline)
+               (fizzbuzz-iter (+ i 1) limit))))
+  (fizzbuzz-iter 1 n))
+                          
 (define (pseudo-chinese-name)
   (let ((initials '("b"
                     "c"

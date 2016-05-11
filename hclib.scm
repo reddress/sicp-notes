@@ -34,3 +34,14 @@
      (do ((j 1 (+ j 1)))
          ((> j n))
        body ...))))
+
+(define (hc-map-to-words f sentence)
+  (string-join
+   (map f (string-split sentence #\space))))
+
+(define (hc-upcase-first-char word)
+  (let ((chars (string->list word)))
+    (list->string (cons (char-upcase (car chars)) (cdr chars)))))
+
+(define (hc-reverse-string str)
+  (list->string (reverse (string->list str))))
