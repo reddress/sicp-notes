@@ -824,3 +824,103 @@
       (begin (set! balance (- balance amount))
              balance)
       "Insufficient funds"))
+
+;;; p. 281 Make state variable internal to procedure
+
+(define new-withdraw
+  (let ((balance 100))
+    (lambda (amount)
+      (if (>= balance amount)
+          (begin (set! balance (- balance amount))
+                 balance)
+          "Insufficient funds"))))
+
+;;; p. 282 Withdrawal processors
+
+(define (make-withdraw balance)
+  (lambda (amount)
+    (if (>= balance amount)
+        (begin (set! balance (- balance amount))
+               balance)
+        "Insufficient funds")))
+
+(define w1 (make-withdraw 100))
+(define w2 (make-withdraw 100))
+
+;;; p. 283 Withdraw and deposit
+
+(define (make-account balance)
+  (define (withdraw amount)
+    (if (>= balance amount)
+        (begin (set! balance (- balance amount))
+               balance)
+        "Insufficient funds"))
+  (define (deposit amount)
+    (set! balance (+ balance amount))
+    balance)
+  (define (dispatch m)
+    (cond ((eq? m 'withdraw) withdraw)
+          ((eq? m 'deposit) deposit)
+          (else (error "Unknown request: make-account" m))))
+  dispatch)
+
+;;; p. 286 Random number sequence
+
+(define rand
+  (let ((random-init 17))
+    (let ((x random-init))
+      (lambda ()
+        (set! x (rand-update x))
+        x))))
+
+(define (rand-update x)
+  (let ((a 12482298742)  ;; obtained by randomly typing numbers
+        (b 24891239124)
+        (m 129437))
+    (remainder (+ (* a x) b) m)))
+
+;;; p. 287 Cesaro test with Monte Carlo method for estimating pi
+
+(define (estimate-pi trials)
+  (sqrt (/ 6 (monte-carlo trials cesaro-test))))
+(define (cesaro-test)
+  (= (gcd (rand) (rand)) 1))
+
+(define (monte-carlo trials experiment)
+  (define (iter trials-remaining trials-passed)
+    (cond ((= trials-remaining 0)
+           (/ trials-passed trials))
+          ((experiment)
+           (iter (- trials-remaining 1)
+                 (+ trials-passed 1)))
+          (else
+           (iter (- trials-remaining 1)
+                 trials-passed))))
+  (iter trials 0))
+
+;;; p. 323 Sharing an individual pair
+
+(define x (list 'a 'b))
+(define z (cons x x))
+
+;;; p. 327 Implement mutable data objects as procedures (compare to representation on p. 130)
+
+(define (cons-mutable x y)
+  (define (set-x! v) (set! x v))
+  (define (set-y! v) (set! y v))
+  (define (dispatch m)
+    (cond ((eq? m 'car) x)
+          ((eq? m 'cdr) y)
+          ((eq? m 'set-car!) set-x!)
+          ((eq? m 'set-cdr!) set-y!)
+          (else
+           (error "Undefined operation: cons-mutable" m))))
+  dispatch)
+
+(define (car-mutable z) (z 'car))
+(define (cdr-mutable z) (z 'cdr))
+(define (set-car-mutable! z new-value)
+  ((z 'set-car!) new-value) z)
+(define (set-cdr-mutable! z new-value)
+  ((z 'set-cdr!) new-value) z)
+
