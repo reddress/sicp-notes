@@ -1,3 +1,6 @@
+;;; Custom functions, all prefixed with hc-
+;;; Using GNU Guile
+
 (use-syntax (ice-9 syncase))
 
 (define (hc-symbol-concat . syms)
