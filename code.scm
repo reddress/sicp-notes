@@ -1,6 +1,7 @@
 ;;; Structure and Interpretation of Computer Programs
 ;;; Using Unofficial Texinfo format 2.andresraba3
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; BUILDING ABSTRACTIONS WITH PROCEDURES
 
 ;;; p. 33 Giving names to identify variables and assign them values
@@ -319,6 +320,7 @@
 (define (fixed-point-of-transform g transform guess)
   (fixed-point (transform g) guess))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; BUILDING ABSTRACTIONS WITH DATA
 
 ;;; p. 117 Data abstraction
@@ -638,3 +640,187 @@
               (cons r a)))
 
 ;;; p. 228 Generic selectors
+
+(define (real-part z)
+  (cond ((rectangular? z)
+         (real-part-rectangular (contents z)))
+        ((polar? z)
+         (real-part-polar (contents z)))
+        (else (error "Unknown type: real-part" z))))
+
+(define (imag-part z)
+  (cond ((rectangular? z)
+         (imag-part-rectangular (contents z)))
+        ((polar? z)
+         (imag-part-polar (contents z)))
+        (else (error "Unknown type: imag-part" z))))
+
+(define (magnitude z)
+  (cond ((rectangular? z)
+         (magnitude-rectangular (contents z)))
+        ((polar? z)
+         (magnitude-polar (contents z)))
+        (else (error "Unknown type: magnitude" z))))
+
+(define (angle z)
+  (cond ((rectangular? z)
+         (angle-rectangular (contents z)))
+        ((polar? z)
+         (angle-polar (contents z)))
+        (else (error "Unknown type: angle" z))))
+
+;;; p. 232 Data-directed programming: manipulating the operation-and-type table
+
+;; (put <op> <type> <item>)  ;; installs the <item> in the table, indexed by <op> and <type>
+
+;; (get <op> <type>)  ;; looks up the <op> and <type> entry and returns the item found there, or false if it is not found
+
+;;; p. 336 put and get are implemented in Section 3.3.3, Two-dimensional tables, with the names lookup and insert!
+
+(define (make-table)
+  (list '*table*))
+
+(define (lookup key-1 key-2 table)
+  (let ((subtable
+         (assoc key-1 (cdr table))))
+    (if subtable
+        (let ((record
+               (assoc key-2 (cdr subtable))))
+          (if record
+              (cdr record)
+              #f))
+        #f)))
+
+(define (insert! key-1 key-2 value table)
+  (let ((subtable
+         (assoc key-1 (cdr table))))
+    (if subtable
+        (let ((record (assoc key-2 (cdr subtable))))
+          (if record
+              (set-cdr! record value)
+              (set-cdr! subtable
+                        (cons (cons key-2 value)
+                              (cdr subtable)))))
+        (set-cdr! table
+                  (cons (list key-1
+                              (cons key-2 value))
+                        (cdr table)))))
+  'OK)
+
+(define complex-table (make-table))
+
+(define (put op type item)
+  (insert! op type item complex-table))
+
+(define (get op type)
+  (lookup op type complex-table))
+
+;;; p. 233 Installing a representation package
+
+(define (install-rectangular-package)
+  ;; internal procedures
+  (define (real-part z) (car z))
+  (define (imag-part z) (cdr z))
+  (define (make-from-real-imag x y) (cons x y))
+  (define (magnitude z)
+    (sqrt (+ (square (real-part z))
+             (square (imag-part z)))))
+  (define (angle z)
+    (atan (imag-part z) (real-part z)))
+  (define (make-from-mag-ang r a)
+    (cons (* r (cos a)) (* r (sin a))))
+
+  ;; interface to the rest of the system
+  (define (tag x) (attach-tag 'rectangular x))
+  ;;; type is contained in a list because apply-generic uses map on the list of args
+  (put 'real-part '(rectangular) real-part)
+  (put 'imag-part '(rectangular) imag-part)
+  (put 'magnitude '(rectangular) magnitude)
+  (put 'angle '(rectangular) angle)
+  (put 'make-from-real-imag 'rectangular
+       (lambda (x y) (tag (make-from-real-imag x y))))
+  (put 'make-from-mag-ang 'rectangular
+       (lambda (r a) (tag (make-from-mag-ang r a))))
+  'done)
+
+(define (install-polar-package)
+  ;; internal procedures
+  (define (magnitude z) (car z))
+  (define (angle z) (cdr z))
+  (define (make-from-mag-ang r a) (cons r a))
+  (define (real-part z)
+    (* (magnitude z) (cos (angle z))))
+  (define (imag-part z)
+    (* (magnitude z) (sin (angle z))))
+  (define (make-from-real-imag x y)
+    (cons (sqrt (+ (square x) (square y)))
+          (atan y x)))
+  ;; interface to the rest of the system
+  (define (tag x) (attach-tag 'polar x))
+  (put 'real-part '(polar) real-part)
+  (put 'imag-part '(polar) imag-part)
+  (put 'magnitude '(polar) magnitude)
+  (put 'angle '(polar) angle)
+  (put 'make-from-real-imag 'polar
+       (lambda (x y) (tag (make-from-real-imag x y))))
+  (put 'make-from-mag-ang 'polar
+       (lambda (r a) (tag (make-from-mag-ang r a))))
+  'done)
+
+;;; p. 235 A general "operation" procedure
+
+(define (apply-generic op . args)
+  (let ((type-tags (map type-tag args)))
+    (let ((proc (get op type-tags)))
+      (if proc
+          (apply proc (map contents args))
+          (error
+           "No method for these types: apply-generic"
+           (list op type-tags))))))
+
+(define (real-part z) (apply-generic 'real-part z))
+(define (imag-part z) (apply-generic 'imag-part z))
+(define (magnitude z) (apply-generic 'magnitude z))
+(define (angle z) (apply-generic 'angle z))
+
+(define (make-from-real-imag x y)
+  ((get 'make-from-real-imag 'rectangular) x y))
+
+(define (make-from-mag-ang r a)
+  ((get 'make-from-mag-ang 'polar) r a))
+
+;;; p. 239 Message passing
+
+(define (make-from-real-imag x y)
+  (define (dispatch op)
+    (cond ((eq? op 'real-part) x)
+          ((eq? op 'imag-part) y)
+          ((eq? op 'magnitude)
+           (sqrt (+ (square x) (square y))))
+          ((eq? op 'angle) (atan y x))
+          (else (error "Unknown op: make-from-real-imag" op))))
+  dispatch)
+
+(define (apply-generic op arg) (arg op))
+
+;;; p. 250 Coercion
+
+;; (define (scheme-number->complex n)
+;;   (make-complex-from-real-imag (contents n) 0))
+
+;;; install coercion procedures in a special coercion table
+;; (put-coercion 'scheme-number
+;;               'complex
+;;               scheme-number->complex)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; MODULARITY, OBJECTS, AND STATE
+
+;;; p. 279 Local state variables
+
+(define balance 100)
+(define (withdraw amount)
+  (if (>= balance amount)
+      (begin (set! balance (- balance amount))
+             balance)
+      "Insufficient funds"))

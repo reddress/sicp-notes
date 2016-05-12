@@ -8,3 +8,8 @@ p. 63 Recursive process vs. procedure
 When we describe a procedure as recursive, we are referring to the syntactic fact that the procedure definition refers to the procedure itself.
 
 But when we describe a process as following a pattern that is, say, linearly recursive, we are speaking about how the process evolves, not about the syntax of how a procedure is written."
+
+p. 231 Data-directed programming
+
+"Whenever we deal with a set of generic operations that are common to a set of different types, we are dealing with a two-dimensional table that contains the possible operations on one axis and the possible types on the other axis."
+
