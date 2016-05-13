@@ -1244,5 +1244,4 @@
 (define (connect connector new-constraint)
   ((connector 'connect) new-constraint))
 
-;;; READ p. 369 Concurrency
-
+;;; p. 387 Implementing serializers
