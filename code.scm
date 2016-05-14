@@ -522,12 +522,12 @@
 
 (define (prime-sum-pairs n)
   (map make-pair-sum
-       (filter prime-sum?
-               (flatmap
-                (lambda (i)
-                  (map (lambda (j) (list i j))
-                       (enumerate-interval 1 (- i 1))))
-                (enumerate-interval 1 n)))))
+       (filter-sicp prime-sum?
+                    (flatmap
+                     (lambda (i)
+                       (map (lambda (j) (list i j))
+                            (enumerate-interval 1 (- i 1))))
+                     (enumerate-interval 1 n)))))
 
 ;;; p.167 Permutations (depends on flatmap and remove)
 
@@ -1078,7 +1078,6 @@
 
 (define C (make-connector))
 (define F (make-connector))
-(celsius-fahrenheit-converter C F)
 
 (define (celsius-fahrenheit-converter c f)
   (let ((u (make-connector))
@@ -1094,10 +1093,11 @@
     (constant 32 y)
     'OK))
 
-(probe "Celsius temp" C)
-(probe "Fahrenheit temp" F)
-
-(set-value! C 25 'user)
+(define (run-temp-simulation)
+  (celsius-fahrenheit-converter C F)
+  (probe "Celsius temp" C)
+  (probe "Fahrenheit temp" F)
+  (set-value! C 25 'user))
 
 (define (adder a1 a2 sum)
   (define (process-new-value)
@@ -1245,3 +1245,29 @@
   ((connector 'connect) new-constraint))
 
 ;;; p. 387 Implementing serializers
+
+(define (make-serializer)
+  (let ((mutex (make-mutex)))
+    (lambda (p)
+      (define (serialized-p . args)
+        (mutex 'acquire)
+        (let ((val (apply p args)))
+          (mutex 'release)
+          val))
+      serialized-p)))
+
+(define (make-mutex)
+  (let ((cell (list #f)))
+    (define (the-mutex m)
+      (cond ((eq? m 'acquire)
+             (if (test-and-set! cell)
+                 (the-mutex 'acquire)))  ; retry
+            ((eq? m 'release) (clear! cell))))
+    the-mutex))
+
+(define (clear! cell) (set-car! cell #f))
+
+(define (test-and-set! cell)
+  (if (car cell) #t (begin (set-car! cell #t) #f)))
+
+;;; p. 396 Streams -- see streams.scm
