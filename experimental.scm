@@ -56,3 +56,13 @@
         (else (display i)
               (newline)
               (loop (- i 1)))))
+
+;;; generalized map for multiple lists, Exercise 3.50
+
+(define (my-map-mult proc . args)
+  (if (null? (car args))
+      '()
+      (cons
+       (apply proc (map car args))
+       (apply my-map-mult
+              (cons proc (map cdr args))))))

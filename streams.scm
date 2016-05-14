@@ -26,13 +26,31 @@
 
 (define (display-line x) (newline) (display x))
 
+;;; avoid endless loop
+(define (stream-for-ten proc s)
+  (define (iter proc s count)
+    (if (> count 10)
+        (begin (newline) 'first-ten)
+        (begin (proc (stream-car s))
+               (iter proc (stream-cdr s) (+ count 1)))))
+  (iter proc s 0))
+
+(define (display-stream-first-ten s)
+  (stream-for-ten display-line s))
+
 ;;; must be special form
-(define (cons-stream a b) (cons a (delay-sicp b)))
+;;; (define (cons-stream a b) (cons a (delay-sicp b)))
+
+;;; http://stackoverflow.com/questions/13998388/running-code-from-sicp-section-3-5-4-with-drracket
+(define-syntax cons-stream
+  (syntax-rules ()
+    ((cons-stream head tail)
+     (cons head (delay tail)))))
 
 ;;; p. 398 Stream car and cdr
 
 (define (stream-car stream) (car stream))
-(define (stream-cdr stream) (force-sicp (cdr stream)))
+(define (stream-cdr stream) (force (cdr stream)))
 
 (define (stream-enumerate-interval low high)
   (if (> low high)
@@ -68,7 +86,7 @@
    (stream-cdr
     (stream-filter prime?
                    (stream-enumerate-interval 10000
-                                              11000)))))
+                                              1100000)))))
 
 ;;; p. 404 Infinite streams
 
@@ -105,6 +123,17 @@
 
 (define ones (cons-stream 1 ones))
 
+
+;;; p. 403 Exercise 3.50 Generalized stream-map
+
+(define (stream-map proc . argstreams)
+  (if (stream-null? (car argstreams))
+      the-empty-stream
+      (cons-stream
+       (apply proc (map stream-car argstreams))
+       (apply stream-map
+              (cons proc (map stream-cdr argstreams))))))
+
 (define (add-streams s1 s2) (stream-map + s1 s2))
 
 (define integers
@@ -128,8 +157,8 @@
 
 (define (prime? n)
   (define (iter ps)
-    (cond ((> (square (stream-car ps)) n) true)
-          ((divisible? n (stream-car ps)) false)
+    (cond ((> (square (stream-car ps)) n) #t)
+          ((divisible? n (stream-car ps)) #f)
           (else (iter (stream-cdr ps)))))
   (iter primes))
 
@@ -147,14 +176,90 @@
   (cons-stream (/ 1.0 n)
                (stream-map - (pi-summands (+ n 2)))))
 
-(define pi-stream
-  (scale-stream (partial-sums (pi-summands 1)) 4))
+;; (define pi-stream
+;;   (scale-stream (partial-sums (pi-summands 1)) 4))
 
-(define (partial-sums)
-  ;;; see Exercise 3.55
-  #f)
+;; (define (partial-sums)
+;;;  see Exercise 3.55
+;;   #f)
 
 ;;; p. 416 Euler sequence
+
+(define (square x) (* x x))
+
+(define (euler-transform s)
+  (let ((s0 (stream-ref s 0))
+        (s1 (stream-ref s 1))
+        (s2 (stream-ref s 2)))
+    (cons-stream (- s2 (/ (square (- s2 s1))
+                          (+ s0 (* -2 s1) s2)))
+                 (euler-transform (stream-cdr s)))))
+
+(define (make-tableau transform s)
+  (cons-stream s (make-tableau transform (transform s))))
+
+(define (accelerated-sequence transform s)
+  (stream-map stream-car (make-tableau transform s)))
+
+(define (use-acceleration)
+  (display-stream
+   (accelerated-sequence euler-transform pi-stream)))
+
+;;; p. 419 Infinite streams of pairs
+
+(define (find-pair-sum-prime)
+  (stream-filter
+   (lambda (pair) (prime? (+ (car pair) (cadr pair))))
+   int-pairs))
+
+(define (rest-of-first-row)
+  (stream-map (lambda (x) (list (stream-car s) x))
+              (stream-cdr t)))
+
+(define (pairs s t)
+  (cons-stream
+   (list (stream-car s) (stream-car t))
+   (<combine-in-some-way>
+    (stream-map (lambda (x) (list (stream-car s) x))
+                (stream-cdr t))
+    (pairs (stream-cdr s) (stream-cdr t)))))
+
+(define (stream-append s1 s2)
+  (if (stream-null? s1)
+      s2
+      (cons-stream (stream-car s1)
+                   (stream-append (stream-cdr s1) s2))))
+
+(define (interleave s1 s2)
+  (if (stream-null? s1)
+      s2
+      (cons-stream (stream-car s1)
+                   (interleave s2 (stream-cdr s1)))))
+
+(define (pairs s t)
+  (cons-stream
+   (list (stream-car s) (stream-car t))
+   (interleave
+    (stream-map (lambda (x) (list (stream-car s) x))
+                (stream-cdr t))
+    (pairs (stream-cdr s) (stream-cdr t)))))
+
+;;; p. 425 Streams as signals
+
+(define (integral integrand initial-value dt)
+  (define int
+    (cons-stream initial-value
+                 (add-streams (scale-stream integrand dt)
+                              int)))
+  int)
+
+;;; p. 430 Will not work because the call to integral requires dy to be defined, which only happens in the next line
+(define (solve f y0 dt)
+  (define y (integral dy y0 dt))
+  (define dy (stream-map f y))
+  y)
+
+  
 
 ;;; Go to evaluator.scm
 
