@@ -1,1 +1,5 @@
-MIT License
+Book code licensed under:
+ Creative Commons Attribution-ShareAlike 4.0 International License
+ https://mitpress.mit.edu/sicp/
+ 
+All other code licensed under: MIT License

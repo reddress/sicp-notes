@@ -3,3 +3,5 @@ p. 154 scale-tree
 R5RS Sec. 4.2.4 Iteration, do, named let
 
 p. 166 Nested mappings with flatmap
+
+p. 496 Representing thunks
