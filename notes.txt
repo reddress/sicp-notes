@@ -22,3 +22,22 @@ The model has two basic parts:
 2. To apply a compound procedure to a set of arguments, evaluate the body of the procedure in a new environment, by extending the environment part of the procedure object by a frame in which the formal parameters of the procedure are bound to the arguments to which the procedure is applied.
 
 The evaluation process is a cycle in which expressions to be evaluated in environments are reduced to procedures to be applied to arguments, which in turn are reduced to new expressions to be evaluated in new environments, and so on, until we reach symbols and primitive procedures, which are applied directly.
+
+p. 475 Ex. 4.15 Halting problem
+
+Suppose you had a procedure halts? that correctly determines whether a procedure p halts on any object a.
+
+You could implement the following program:
+
+(define (run-forever) (run-forever))  ; infinite loop
+(define (try p)
+  (if (halts? p p) (run-forever) 'halted))
+;;; if p halts given itself, run forever.
+;;; Otherwise, if p runs forever given itself, halt and report "halted"
+
+Now, running (try try) can be rewritten as
+(if (halts? try try) (run-forever) 'halted)
+
+if (halts? try try) is true, try ends up in an infinite loop. So halts?, although returning true, did not in fact result in the process terminating.
+
+if (halts? try try) is false, try returns 'halted, which again, is not what halts? claims to do.

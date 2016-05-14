@@ -100,7 +100,8 @@
   (stream-filter (lambda (x) (not (divisible? x 7)))
                  integers))
 
-(stream-ref no-sevens 100)
+(define (test-stream-ref) 
+  (stream-ref no-sevens 100))
 
 (define (fibgen a b) (cons-stream a (fibgen b (+ a b))))
 (define fibs (fibgen 0 1))
@@ -169,7 +170,7 @@
   (/ (+ x y) 2))
 
 (define (sqrt-stream x)
-  (define (sqrt-improve guess)
+  (define (sqrt-improve guess x)
     (average guess (/ x guess)))
   (define guesses
     (cons-stream
@@ -298,14 +299,29 @@
 
 ;;; p. 436 Stream of random numbers
 
+(define rand
+  (let ((random-init 17))
+    (let ((x random-init))
+      (lambda ()
+        (set! x (rand-update x))
+        x))))
+
+(define (rand-update x)
+  (let ((a 12482298742)  ;; obtained by randomly typing numbers
+        (b 24891239124)
+        (m 129437))
+    (remainder (+ (* a x) b) m)))
+
+
 (define (map-successive-pairs f s)
   (cons-stream
    (f (stream-car s) (stream-car (stream-cdr s)))
    (map-successive-pairs f (stream-cdr (stream-cdr s)))))
 
 (define random-numbers
-  (cons-stream random-init
-               (stream-map rand-update random-numbers)))
+  (let ((random-init 117))
+    (cons-stream random-init
+                 (stream-map rand-update random-numbers))))
 
 ;;; p. 436 Monte Carlo with streams
 
@@ -336,5 +352,5 @@
    (stream-withdraw (- balance (stream-car amount-stream))
                     (stream-cdr amount-stream))))
 
-;;; Go to evaluator.scm
+;;; Next: see evaluator.scm
 

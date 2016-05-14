@@ -1,79 +1,96 @@
-;;; p. 443 Chapter 4 Metalinguistic Abstraction
+;;; p. 484 Syntactic Analysis
 
-;;; Evaluate everything twice because initial definitions uses functions defined after them.
+(define (eval-syntactic-analysis exp env)
+  ((analyze exp) env))
 
-;;; p. 470 Footnote 17
-
-(define apply-in-underlying-scheme apply)
-
-;;; p. 450 Eval
-
-(define (eval-sicp exp env)
-  (cond ((self-evaluating? exp) exp)
-        ((variable? exp) (lookup-variable-value exp env))
-        ((quoted? exp) (text-of-quotation exp))
-        ((assignment? exp) (eval-assignment exp env))
-        ((definition? exp) (eval-definition exp env))
-        ((if? exp) (eval-if exp env))
-        ((lambda? exp)
-         (make-procedure (lambda-parameters exp)
-                         (lambda-body exp)
-                         env))
+(define (analyze exp)
+  (cond ((self-evaluating? exp)
+         (analyze-self-evaluating exp))
+        ((quoted? exp) (analyze-quoted exp))
+        ((variable? exp) (analyze-variable exp))
+        ((assignment? exp) (analyze-assignment exp))
+        ((definition? exp) (analyze-definition exp))
+        ((if? exp) (analyze-if exp))
+        ((lambda? exp) (analyze-lambda exp))
         ((begin? exp)
-         (eval-sequence (begin-actions exp) env))
-        ((cond? exp) (eval-sicp (cond->if exp) env))
-        ((application? exp)
-         (apply-sicp (eval-sicp (operator exp) env)
-                (list-of-values (operands exp) env)))
+         (analyze-sequence (begin-actions exp)))
+        ((cond? exp) (analyze (cond->if exp)))
+        ((application? exp) (analyze-application exp))
         (else
-         (error "Unknown expression type: eval-sicp" exp))))
+         (error "Unknown expression type: analyze" exp))))
 
-;;; p. 452 Apply
+(define (analyze-self-evaluating exp)
+  (lambda (env) exp))
 
-(define (apply-sicp procedure arguments)
-  (cond ((primitive-procedure? procedure)
-         (apply-primitive-procedure procedure arguments))
-        ((compound-procedure? procedure)
-         (eval-sequence
-          (procedure-body procedure)
+(define (analyze-quoted exp)
+  (let ((qval (text-of-quotation exp)))
+    (lambda (env) qval)))
+
+(define (analyze-variable exp)
+  (lambda (env) (lookup-variable-value exp env)))
+
+(define (analyze-assignment exp)
+  (let ((var (assignment-variable exp))
+        (vproc (analyze (assignment-value exp))))
+    (lambda (env)
+      (set-variable-value! var (vproc env) env)
+      'analyze-assignment-ok)))
+
+(define (analyze-definition exp)
+  (let ((var (definition-variable exp))
+        (vproc (analyze (definition-value exp))))
+    (lambda (env)
+      (define-variable! var (vproc env) env)
+      'analyze-definition-ok)))
+
+(define (analyze-if exp)
+  (let ((pproc (analyze (if-predicate exp)))
+        (cproc (analyze (if-consequent exp)))
+        (aproc (analyze (if-alternative exp))))
+    (lambda (env) (if (true? (pproc env))
+                      (cproc env)
+                      (aproc env)))))
+
+(define (analyze-lambda exp)
+  (let ((vars (lambda-parameters exp))
+        (bproc (analyze-sequence (lambda-body exp))))
+    (lambda (env) (make-procedure vars bproc env))))
+
+(define (analyze-sequence exps)
+  (define (sequentially proc1 proc2)
+    (lambda (env) (proc1 env) (proc2 env)))
+  (define (loop first-proc rest-procs)
+    (if (null? rest-procs)
+        first-proc
+        (loop (sequentially first-proc (car rest-procs))
+              (cdr rest-procs))))
+  (let ((procs (map analyze exps)))
+    (if (null? procs) (error "Empty sequence: analyze"))
+    (loop (car procs) (cdr procs))))
+
+;;; p. 487 To Analyze an application
+    
+(define (analyze-application exp)
+  (let ((fproc (analyze (operator exp)))
+        (aprocs (map analyze (operands exp))))
+    (lambda (env)
+      (execute-application
+       (fproc env)
+       (map (lambda (aproc) (aproc env))
+            aprocs)))))
+(define (execute-application proc args)
+  (cond ((primitive-procedure? proc)
+         (apply-primitive-procedure proc args))
+        ((compound-procedure? proc)
+         ((procedure-body proc)
           (extend-environment
-           (procedure-parameters procedure)
-           arguments
-           (procedure-environment procedure))))
+           (procedure-parameters proc)
+           args
+           (procedure-environment proc))))
         (else
-         (error "Unknown procedure type: apply-sicp" procedure))))
+         (error "Unknown procedure type: execute-application" proc))))
 
-(define (list-of-values exps env)
-  (if (no-operands? exps)
-      '()
-      (cons (eval-sicp (first-operand exps) env)
-            (list-of-values (rest-operands exps) env))))
-
-(define (eval-if exp env)
-  (if (true? (eval-sicp (if-predicate exp) env))
-      (eval-sicp (if-consequent exp) env)
-      (eval-sicp (if-alternative exp) env)))
-
-(define (eval-sequence exps env)
-  (cond ((last-exp? exps)
-         (eval-sicp (first-exp exps) env))
-        (else
-         (eval-sicp (first-exp exps) env)
-         (eval-sequence (rest-exps exps) env))))
-
-(define (eval-assignment exp env)
-  (set-variable-value! (assignment-variable exp)
-                       (eval-sicp (assignment-value exp) env)
-                       env)
-  'eval-assignment-ok)
-
-(define (eval-definition exp env)
-  (define-variable! (definition-variable exp)
-    (eval-sicp (definition-value exp) env)
-    env)
-  'eval-definition-ok)
-
-;;; p. 455 Syntax of the language
+;;; definitions from evaluator.scm
 
 (define (self-evaluating? exp)
   (cond ((number? exp) #t)
@@ -145,8 +162,6 @@
 (define (first-operand ops) (car ops))
 (define (rest-operands ops) (cdr ops))
 
-;;; p. 459 Transform cond to if expressions
-
 (define (cond? exp) (tagged-list? exp 'cond))
 (define (cond-clauses exp) (cdr exp))
 (define (cond-else-clause? clause)
@@ -179,24 +194,6 @@
 (define (procedure-parameters p) (cadr p))
 (define (procedure-body p) (caddr p))
 (define (procedure-environment p) (cadddr p))
-
-(define (enclosing-environment env) (cdr env))
-(define (first-frame env) (car env))
-(define the-empty-environment '())
-
-(define (make-frame variables values)
-  (cons variables values))
-(define (frame-variables frame) (car frame))
-(define (frame-values frame) (cdr frame))
-(define (add-binding-to-frame! var val frame)
-  (set-car! frame (cons var (car frame)))
-  (set-cdr! frame (cons val (cdr frame))))
-(define (extend-environment vars vals base-env)
-  (if (= (length vars) (length vals))
-      (cons (make-frame vars vals) base-env)
-      (if (< (length vars) (length vals))
-          (error "Too many arguments supplied: extend-environment" vars vals)
-          (error "Too few arguments supplied: extend-environment" vars vals))))
 
 (define (lookup-variable-value var env)
   (define (env-loop env)
@@ -263,6 +260,32 @@
   (map (lambda (proc) (list 'primitive (cadr proc)))
        primitive-procedures))
 
+(define (apply-primitive-procedure proc args)
+  (apply-in-underlying-scheme
+   (primitive-implementation proc) args))
+
+(define (make-frame variables values)
+  (cons variables values))
+(define (frame-variables frame) (car frame))
+(define (frame-values frame) (cdr frame))
+(define (add-binding-to-frame! var val frame)
+  (set-car! frame (cons var (car frame)))
+  (set-cdr! frame (cons val (cdr frame))))
+(define (extend-environment vars vals base-env)
+  (if (= (length vars) (length vals))
+      (cons (make-frame vars vals) base-env)
+      (if (< (length vars) (length vals))
+          (error "Too many arguments supplied: extend-environment" vars vals)
+          (error "Too few arguments supplied: extend-environment" vars vals))))
+
+(define (enclosing-environment env) (cdr env))
+(define (first-frame env) (car env))
+(define the-empty-environment '())
+
+(define apply-in-underlying-scheme apply)
+
+;;; driver loop
+
 (define (setup-environment)
   (let ((initial-env
          (extend-environment (primitive-procedure-names)
@@ -273,22 +296,17 @@
     initial-env))
 (define the-global-environment (setup-environment))
 
+(define input-prompt ";;; M-S-Eval input: ")
+(define output-prompt ";;; M-S-Eval value: ")
 
-(define (apply-primitive-procedure proc args)
-  (apply-in-underlying-scheme
-   (primitive-implementation proc) args))
-
-;;; p. 471 Driver loop
-  
-(define input-prompt ";;; M-Eval input: ")
-(define output-prompt ";;; M-Eval value: ")
 (define (driver-loop)
   (prompt-for-input input-prompt)
   (let ((input (read)))
-    (let ((output (eval-sicp input the-global-environment)))
+    (let ((output (eval-syntactic-analysis input the-global-environment)))
       (announce-output output-prompt)
       (user-print output)))
   (driver-loop))
+
 (define (prompt-for-input string)
   (newline) (newline) (display string) (newline))
 (define (announce-output string)
@@ -305,10 +323,3 @@
 (define (run-evaluator)
   (define the-global-environment (setup-environment))
   (driver-loop))
-
-(define (append x y)
-  (if (null? x)
-      y
-      (cons (car x) (append (cdr x) y))))
-
-;;; see file syntactic-analysis.scm
