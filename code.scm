@@ -874,9 +874,9 @@
         x))))
 
 (define (rand-update x)
-  (let ((a 12482298742)  ;; obtained by randomly typing numbers
-        (b 24891239124)
-        (m 129437))
+  (let ((a 27)  ;; obtained from official code in ch3support.scm
+        (b 26)
+        (m 127))
     (remainder (+ (* a x) b) m)))
 
 ;;; p. 287 Cesaro test with Monte Carlo method for estimating pi
