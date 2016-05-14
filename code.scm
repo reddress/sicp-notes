@@ -877,7 +877,7 @@
   (let ((a 27)  ;; obtained from official code in ch3support.scm
         (b 26)
         (m 127))
-    (remainder (+ (* a x) b) m)))
+    (modulo (+ (* a x) b) m)))
 
 ;;; p. 287 Cesaro test with Monte Carlo method for estimating pi
 
