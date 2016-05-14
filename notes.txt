@@ -13,3 +13,12 @@ p. 231 Data-directed programming
 
 "Whenever we deal with a set of generic operations that are common to a set of different types, we are dealing with a two-dimensional table that contains the possible operations on one axis and the possible types on the other axis."
 
+p. 447 Model of an evaluator
+
+The model has two basic parts:
+
+1. To evaluate a regular compound expression (combination), evaluate the subexpressions and then apply the operator to the values of the subexpressions.
+
+2. To apply a compound procedure to a set of arguments, evaluate the body of the procedure in a new environment, by extending the environment part of the procedure object by a frame in which the formal parameters of the procedure are bound to the arguments to which the procedure is applied.
+
+The evaluation process is a cycle in which expressions to be evaluated in environments are reduced to procedures to be applied to arguments, which in turn are reduced to new expressions to be evaluated in new environments, and so on, until we reach symbols and primitive procedures, which are applied directly.
