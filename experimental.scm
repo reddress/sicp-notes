@@ -66,3 +66,23 @@
        (apply proc (map car args))
        (apply my-map-mult
               (cons proc (map cdr args))))))
+
+;;; finite ex. 3.55
+
+;; 0 1 2 3 4 5   ; add 0, 1
+
+;; 1 (2 3 4 5)   ; add 1, 2
+;; 1 3 (3 4 5)   ; add 3, 3
+;; 1 6 (4 5)     ; add 6, 4
+
+(define (partial-sums-finite integers last count)
+  (if (> count 10)
+      'done
+      (if (null? integers)
+          '()
+          (let ((head (+ last
+                         (car integers))))
+            (cons head (partial-sums-finite (cdr integers) head (+ count 1)))))))
+
+(define (test-partial-sums-finite)
+  (partial-sums-finite '(1 2 3 4 5 6 7 8 9 10) 0 0))

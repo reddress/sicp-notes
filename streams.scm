@@ -1,4 +1,4 @@
-;;; Using Guile and Chicken, REPL hangs
+;;; Using Chicken
 ;;; p. 396 Building streams
 
 (define the-empty-stream '())
@@ -162,9 +162,15 @@
           (else (iter (stream-cdr ps)))))
   (iter primes))
 
-;;; p. 414 
+;;; p. 414
+
+;; from code.scm
+(define (average x y)
+  (/ (+ x y) 2))
 
 (define (sqrt-stream x)
+  (define (sqrt-improve guess)
+    (average guess (/ x guess)))
   (define guesses
     (cons-stream
      1.0
@@ -176,12 +182,26 @@
   (cons-stream (/ 1.0 n)
                (stream-map - (pi-summands (+ n 2)))))
 
-;; (define pi-stream
-;;   (scale-stream (partial-sums (pi-summands 1)) 4))
+(define pi-stream
+  (scale-stream (partial-sums (pi-summands 1)) 4))
 
-;; (define (partial-sums)
-;;;  see Exercise 3.55
-;;   #f)
+;;; Ex. 3.55
+
+;;; See finite version in experimental.scm
+
+;; 1 2 3  4  5
+;;   1 2  3  4  
+;;     1  2  3  
+;;        1  2  
+;;           1  
+;; ------------
+;; 1 3 6 10 15
+
+(define (partial-sums s)
+  (add-streams s (cons-stream 0 (partial-sums s))))
+
+(define (check-partial-sums)
+  (display-stream-first-ten (partial-sums (stream-enumerate-interval 1 18))))
 
 ;;; p. 416 Euler sequence
 
@@ -202,27 +222,27 @@
   (stream-map stream-car (make-tableau transform s)))
 
 (define (use-acceleration)
-  (display-stream
+  (display-stream-first-ten
    (accelerated-sequence euler-transform pi-stream)))
 
 ;;; p. 419 Infinite streams of pairs
 
-(define (find-pair-sum-prime)
-  (stream-filter
-   (lambda (pair) (prime? (+ (car pair) (cadr pair))))
-   int-pairs))
+;; (define (find-pair-sum-prime)
+;;   (stream-filter
+;;    (lambda (pair) (prime? (+ (car pair) (cadr pair))))
+;;    int-pairs))
 
-(define (rest-of-first-row)
-  (stream-map (lambda (x) (list (stream-car s) x))
-              (stream-cdr t)))
+;; (define (rest-of-first-row)
+;;   (stream-map (lambda (x) (list (stream-car s) x))
+;;               (stream-cdr t)))
 
-(define (pairs s t)
-  (cons-stream
-   (list (stream-car s) (stream-car t))
-   (<combine-in-some-way>
-    (stream-map (lambda (x) (list (stream-car s) x))
-                (stream-cdr t))
-    (pairs (stream-cdr s) (stream-cdr t)))))
+;; (define (pairs s t)
+;;   (cons-stream
+;;    (list (stream-car s) (stream-car t))
+;;    (<combine-in-some-way>
+;;     (stream-map (lambda (x) (list (stream-car s) x))
+;;                 (stream-cdr t))
+;;     (pairs (stream-cdr s) (stream-cdr t)))))
 
 (define (stream-append s1 s2)
   (if (stream-null? s1)
@@ -259,7 +279,62 @@
   (define dy (stream-map f y))
   y)
 
-  
+(define (integral delayed-integrand initial-value dt)
+  (define int
+    (cons-stream
+     initial-value
+     (let ((integrand (force delayed-integrand)))
+       (add-streams (scale-stream integrand dt)
+                    int))))
+  int)
+
+(define (solve f y0 dt)
+  (define y (integral (delay dy) y0 dt))
+  (define dy (stream-map f y))
+  y)
+
+(define (test-solver)
+  (stream-ref (solve (lambda (y) y) 1 0.001) 1000))
+
+;;; p. 436 Stream of random numbers
+
+(define (map-successive-pairs f s)
+  (cons-stream
+   (f (stream-car s) (stream-car (stream-cdr s)))
+   (map-successive-pairs f (stream-cdr (stream-cdr s)))))
+
+(define random-numbers
+  (cons-stream random-init
+               (stream-map rand-update random-numbers)))
+
+;;; p. 436 Monte Carlo with streams
+
+(define cesaro-stream
+  (map-successive-pairs
+   (lambda (r1 r2) (= (gcd r1 r2) 1))
+   random-numbers))
+
+(define (monte-carlo experiment-stream passed failed)
+  (define (next passed failed)
+    (cons-stream
+     (/ passed (+ passed failed))
+     (monte-carlo
+      (stream-cdr experiment-stream) passed failed)))
+  (if (stream-car experiment-stream)
+      (next (+ passed 1) failed)
+      (next passed (+ failed 1))))
+(define pi
+  (stream-map
+   (lambda (p) (sqrt (/ 6 p)))
+   (monte-carlo cesaro-stream 0 0)))
+
+;;; p. 439 Streams as a way of storing time-dependent data
+
+(define (stream-withdraw balance amount-stream)
+  (cons-stream
+   balance
+   (stream-withdraw (- balance (stream-car amount-stream))
+                    (stream-cdr amount-stream))))
 
 ;;; Go to evaluator.scm
 
