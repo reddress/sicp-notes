@@ -1,0 +1,44 @@
+https://wqzhang.wordpress.com/2010/04/29/sicp-exercise-4-45/
+
+Exercise 4.45
+
+With the grammar given above, the following sentence can be parsed in five different ways:
+
+"The professor lectures to the student in the class with the cat."
+
+Give the five parses and explain the differences in shades of meaning among them.
+
+Solution:
+
+The cat has three possibilities: with the professor, the student, or the class. Either the professor or the student is in the class. So there are 6 possibilities. However, if the cat is with the student, the word "class" must belong to the student because it is between the words "student" and "cat". Thus there are 5 ways to parse the sentence.
+
+(3 choices for where the cat is: class, student, or professor)
+(2 choices for who is in the class: student or professor)
+
+professor in class
+cat student
+
+    1) With the cat, the professor lectures in the class. This means
+
+        The cat is with the professor.
+        The professor is in the class.
+
+    2) The professor lectures in the class that has the cat. This means
+
+        The cat is with the class.
+        The professor is in the class.
+
+    3) With the cat, the professor lectures to student who is in the class. This means
+
+        The cat is with the professor.
+        The student is in the class.
+
+    4) The professor lectures to the student in the class who has the cat. This means
+
+        The cat is with the student.
+        The student is in the class.
+
+    5) The professor lectures to student who is in the class that has the cat. This means
+
+        The cat is with the class.
+        The student is in the class.
