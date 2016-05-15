@@ -200,6 +200,28 @@
                      (sequence->exp (cond-actions first))
                      (expand-clauses rest))))))
 
+;;; Ex. 4.6
+
+(define (let? exp) (tagged-list? exp 'let))
+(define (let-assignment exp) (cadr exp))
+(define (let-body exp) (cddr exp))
+(define (let-exp assignment)
+  (if (null? assignment)
+      '()
+      (cons (cadr (car assignment))
+            (let-exp (cdr assignment)))))
+(define (let-var assignment)
+  (if (null? assignment)
+      '()
+      (cons (car (car assignment))
+            (let-var (cdr assignment)))))
+(define (let->combination exp)
+  (transform-let (let-assignment exp) (let-body exp)))
+(define (transform-let assignment body)
+  (cons (make-lambda (let-var assignment) body)
+        (let-exp assignment)))
+
+
 ;;; p. 463 Data structures
 
 (define (true? x) (not (eq? x #f)))
