@@ -1,3 +1,5 @@
 * macro to simplify typical (f (cdr list)) construct
 
 * items in study.txt
+
+* fix logic.scm (Query results print nothing)
