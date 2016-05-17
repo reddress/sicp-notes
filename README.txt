@@ -12,4 +12,4 @@ Chapter 4: evaluator.scm, syntactic-analysis.scm, lazy-evaluator.scm,
 lazy-streams.scm, nondeterministic.scm (nondeterministic-guile.scm),
 logic.scm
 
-Chapter 5: 
+Chapter 5: register-machine.scm
