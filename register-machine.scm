@@ -4,7 +4,8 @@
   (make-machine
    '(a b t)
    (list (list 'rem remainder) (list '= =))
-   '(test-b (test (op =) (reg b) (const 0))
+   ;; causes error "Unknown operation: lookup-prim ASSEMBLE"
+   '(test-b (test (op =) (reg b) (const 0))  
             (branch (label gcd-done))
             (assign t (op rem) (reg a) (reg b))
             (assign a (reg b))
@@ -89,7 +90,7 @@
               (cadr val)
               (error "Unknown register: make-new-machine lookup-register: " name))))
       (define (execute)
-        (let ((insts (get-contents ps)))
+        (let ((insts (get-contents pc)))
           (if (null? insts)
               'done
               (begin
@@ -322,6 +323,13 @@
         (else
          (error "Unknown expression type: make-primitive-exp ASSEMBLE" exp))))
 
+;;; from evaluator.scm
+
+(define (tagged-list? exp tag)
+  (if (pair? exp)
+      (eq? (car exp) tag)
+      #f))
+
 ;;; p. 640 Syntax of reg, label, and const
 
 (define (register-exp? exp) (tagged-list? exp 'reg))
@@ -333,6 +341,78 @@
 
 ;;; p. 640 make-operation-exp
 (define (make-operation-exp exp machine labels operations)
-  ;;;
+  (let ((op (lookup-prim (operation-exp-op exp)
+                         operations))
+        (aprocs
+         (map (lambda (e)
+                (make-primitive-exp e machine labels))
+              (operation-exp-operands exp))))
+    (lambda ()
+      (apply op (map (lambda (p) (p)) aprocs)))))
 
- 
+(define (operation-exp? exp)
+  (and (pair? exp) (tagged-list? (car exp) 'op)))
+(define (operation-exp-op operation-exp)
+  (cdr operation-exp))
+
+(define (lookup-prim symbol operations)
+  (let ((val (assoc symbol operations)))
+    (if val
+        (cadr val)
+        (error "Unknown operation: lookup-prim ASSEMBLE" symbol))))
+
+;;; p. 643 New definition of make-stack
+
+(define (make-stack)
+  (let ((s '())
+        (number-pushes 0)
+        (max-depth 0)
+        (current-depth 0))
+    (define (push x)
+      (set! s (cons x s))
+      (set! number-pushes (+ 1 number-pushes))
+      (set! max-depth (max current-depth max-depth)))
+    (define (pop)
+      (if (null? s)
+          (error "Empty stack: make-stack POP")
+          (let ((top (car s)))
+            (set! s (cdr s))
+            (set! current-depth (- current-depth 1))
+            top)))
+    (define (initialize)
+      (set! s '())
+      (set! number-pushes 0)
+      (set! max-depth 0)
+      (set! current-depth 0)
+      'make-stack-done)
+    (define (print-statistics)
+      (newline)
+      (display (list 'total-pushes '= number-pushes
+                     'maximum-depth '= max-depth)))
+    (define (dispatch message)
+      (cond ((eq? message 'push) push)
+            ((eq? message 'pop) (pop))
+            ((eq? message 'initialize) (initialize))
+            ((eq? message 'print-statistics)
+             (print-statistics))
+            (else
+             (error "Unknown request:: make-stack STACK" message))))
+    dispatch))
+
+;;; p. 680 Evaluator machine model
+
+(define eceval
+  (make-machine
+   '(exp env val proc argl continue unev)
+   eceval-operations
+   '(read-eval-print-loop
+     ;;; which controller?
+     <entire machine controller>)))
+
+(define eceval-operations
+  (list (list 'self-evaluating? self-evaluating)
+        ;;; which list?
+        <complete list of operations for eceval machine>))
+
+(define the-empty-environment (setup-environment))
+;; (start eceval)
