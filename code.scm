@@ -193,7 +193,7 @@
 ;;; p. 92 Numerical integration
 
 (define (integral f a b)
-  (let ((dx 0.2))   ;; stack overflow if dx = 0.001 or large a-b range
+  (let ((dx 0.01))   ;; stack overflow if dx = 0.001 or large a-b range
     (define (add-dx x)
       (+ x dx))
     (* (sum f (+ a (/ dx 2.0)) add-dx b)

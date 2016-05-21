@@ -1,5 +1,10 @@
 ;;; silly code
 
+;;; rewriting x^2 + y^2 = 1 in terms of y
+;;; evaluate (integral fn-y-semicircle -1 1) for pi/2
+(define (fn-y-semicircle x)
+  (sqrt (- 1 (* x x))))
+
 (define (fizzbuzz-sequence n)
   (define (is-special n div word)
     (if (= (remainder n div) 0)
